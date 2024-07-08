@@ -1,0 +1,123 @@
+import heapq  # Importa la biblioteca heapq, que proporciona una implementación de la cola de prioridad.
+
+# Tamaño del mapa
+N = 15  # Define el tamaño del mapa (15x15).
+
+# Variables para diferentes tipos de elementos en el mapa.
+VACIO = '.'  # Representa un espacio vacío.
+OBSTACULO = '#'  # Representa un obstáculo.
+EDIFICIO = 'E'  # Representa un edificio.
+AGUA = 'A'  # Representa una zona con agua.
+CALLE = 'C'  # Representa el camino por donde recorre hasta llegar al fin.
+INICIO = 'I'  # Marca el punto de inicio.
+FIN = 'F'  # Marca el punto de fin.
+
+# Crear el mapa vacío.
+mapa = [[VACIO for _ in range(N)] for _ in range(N)]  # Crea una matriz 15x15 llena de puntos (espacios vacíos).
+
+
+# Función para imprimir el mapa.
+def imprimir_mapa(mapa):
+    for fila in mapa:
+        print(' '.join(fila))  # Imprime cada fila del mapa como una cadena de caracteres.
+
+# Imprimir el mapa inicial.
+print("Mapa inicial:")
+imprimir_mapa(mapa)  # Llama a la función para imprimir el mapa inicial.
+
+# Función para obtener coordenadas del usuario.
+def obtener_coordenadas(mensaje):
+    while True:
+        try:
+            x, y = map(int, input(mensaje).split())  # Solicita al usuario ingresar dos números separados por un espacio.
+            if 0 <= x < N and 0  <= y < N:
+                return (x, y)  # Devuelve las coordenadas si están dentro del rango válido.
+            else:
+                print(f"Por favor, ingrese coordenadas dentro del rango 0 a {N-1}.")
+        except ValueError:
+            print("Por favor, ingrese dos números enteros separados por un espacio.")
+
+# Obtener coordenadas de inicio y fin del usuario.
+inicio = obtener_coordenadas("Ingrese las coordenadas de inicio (x y): ")  # Solicita las coordenadas de inicio.
+fin = obtener_coordenadas("Ingrese las coordenadas de fin (x y): ")  # Solicita las coordenadas de fin.
+
+# Añadir inicio y fin al mapa.
+mapa[inicio[0]][inicio[1]] = INICIO  # Marca la posición de inicio en el mapa.
+mapa[fin[0]][fin[1]] = FIN  # Marca la posición de fin en el mapa.
+
+# Obtener coordenadas de obstáculos del usuario.
+num_obstaculos = int(input("Ingrese el número de obstáculos: "))  # Solicita el número de obstáculos.
+obstaculos = [obtener_coordenadas(f"Ingrese las coordenadas del obstáculo {i+1} (x y): ") for i in range(num_obstaculos)]
+
+# Añadir obstáculos al mapa.
+for (x, y) in obstaculos:
+    mapa[x][y] = OBSTACULO  # Marca las posiciones de los obstáculos en el mapa.
+
+# Obtener coordenadas de edificios del usuario.
+num_edificios = int(input("Ingrese el número de edificios: "))  # Solicita el número de edificios.
+edificios = [obtener_coordenadas(f"Ingrese las coordenadas del edificio {i+1} (x y): ") for i in range(num_edificios)]
+ 
+# Añadir edificios al mapa.
+for (x, y) in edificios:
+    mapa[x][y] = EDIFICIO  # Marca las posiciones de los edificios en el mapa.
+
+# Obtener coordenadas de agua del usuario.
+num_agua = int(input("Ingrese el número de áreas con agua: "))  # Solicita el número de áreas con agua.
+agua = [obtener_coordenadas(f"Ingrese las coordenadas del agua {i+1} (x y): ") for i in range(num_agua)]
+
+# Añadir agua al mapa.
+for (x, y) in agua:
+    mapa[x][y] = AGUA  # Marca las posiciones de las áreas con agua en el mapa.
+
+# Función heurística Manhattan para A*.
+def heuristica(a, b):
+    return abs(a[0] - b[0]) + abs(a[1] - b[1])  # Calcula la distancia Manhattan entre dos puntos.
+
+# Algoritmo A*.
+def a_star(mapa, inicio, fin):
+    open_set = []  # Cola de prioridad de nodos a evaluar.
+    heapq.heappush(open_set, (0, inicio))  # Añade el nodo inicial con prioridad 0.
+    came_from = {}  # Diccionario para rastrear el camino.
+    g_score = {inicio: 0}  # Distancia del inicio a cada nodo.
+    f_score = {inicio: heuristica(inicio, fin)}  # Estimación de la distancia total desde el inicio hasta el final.
+    
+    while open_set:
+        _, actual = heapq.heappop(open_set)  # Extrae el nodo con la menor f_score.
+        
+        if actual == fin:
+            return reconstruir_camino(came_from, actual)  # Si se alcanza el nodo final, reconstruye el camino.
+        
+        for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:  # Explora los vecinos (arriba, abajo, izquierda, derecha).
+            vecino = (actual[0] + dx, actual[1] + dy)
+            if 0 <= vecino[0] < N and 0 <= vecino[1] < N and mapa[vecino[0]][vecino[1]] not in [OBSTACULO, EDIFICIO, AGUA]:
+                tentative_g_score = g_score[actual] + 1  # Calcula el g_score tentativo para el vecino.
+                if vecino not in g_score or tentative_g_score < g_score[vecino]:
+                    came_from[vecino] = actual  # Actualiza el camino para el vecino.
+                    g_score[vecino] = tentative_g_score  # Actualiza el g_score del vecino.
+                    f_score[vecino] = tentative_g_score + heuristica(vecino, fin)  # Calcula el f_score del vecino.
+                    heapq.heappush(open_set, (f_score[vecino], vecino))  # Añade el vecino a la cola de prioridad.
+    
+    return None  # Devuelve None si no se encuentra un camino.
+
+# Función para reconstruir el camino desde el nodo final al inicio.
+def reconstruir_camino(came_from, actual):
+    camino = [actual]  # Inicia con el nodo final.
+    while actual in came_from:
+        actual = came_from[actual]  # Retrocede en el camino hasta el nodo inicial.
+        camino.append(actual)
+    camino.reverse()  # Invierte el camino para que vaya del inicio al fin.
+    return camino
+
+# Encontrar la ruta usando A*.
+ruta = a_star(mapa, inicio, fin)
+
+# Actualizar el mapa con la ruta encontrada.
+if ruta:
+    for (x, y) in ruta:
+        if mapa[x][y] not in [INICIO, FIN]:
+            mapa[x][y] = CALLE  # Marca el camino en el mapa.
+    
+    print("\nMapa con la ruta encontrada:")
+    imprimir_mapa(mapa)  # Imprime el mapa con la ruta.
+else:
+    print("No se encontró una ruta.")  # Indica si no se encontró un camino.
